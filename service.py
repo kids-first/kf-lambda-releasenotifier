@@ -1,7 +1,5 @@
 import os
-import boto3
-import json
-import requests
+from botocore.vendored import requests
 
 
 def handler(event, context):
