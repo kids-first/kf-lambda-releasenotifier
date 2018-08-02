@@ -1,5 +1,6 @@
 import os
 import json
+import re
 import boto3
 from base64 import b64decode
 from botocore.vendored import requests
@@ -32,7 +33,9 @@ def handler(event, context):
         'error': ":bangbang:",
         'warning': ":warning:"
     }
-    message = f"{emoji[ev['event_type']]} {ev['message']}"
+    emoji = emoji_from_message(ev['message'])
+    emoji = emoji[ev['event_type']] if emoji is None else emoji
+    message = f"{emoji} {ev['message']}"
     
     attachment = {
         "fallback": ev['message'],
@@ -88,3 +91,25 @@ def handler(event, context):
             resp = requests.post('https://slack.com/api/chat.postMessage',
                 headers={'Authorization': 'Bearer '+SLACK_TOKEN},
                 json=slack_msg)
+
+def emoji_from_message(msg):
+    p = r'^.*from (\w+) to (\w+)$'
+    m = re.match(p, msg)
+    trans = {
+        'initializing': ':clock1:',
+        'running': ':athletic_shoe:',
+        'staged': ':warning:',
+        'publishing': ':recycle:',
+        'published': ':white_check_mark:',
+        'canceling': ':double_vertical_bar:',
+        'canceled': ':no_entry_sign:',
+        'failed': ':exclamation:'
+    }
+    if m and len(m.groups()) == 2:
+        fr = m.groups()[0]
+        to = m.groups()[1]
+        if to not in trans:
+            return ':blue_diamond:'
+        return trans[to]
+
+
