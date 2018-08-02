@@ -41,14 +41,23 @@ def handler(event, context):
     }
     
     author = ''
+    author_link = ''
     if ev['release'] is not None:
         author += f":pushpin: {ev['release']}"
+        if '-dev' in context.function_name:
+            author_link = 'https://kf-ui-release-coordinator-dev.kids-first.io/releases/'
+        elif '-qa' in context.function_name:
+            author_link = 'https://kf-ui-release-coordinator-qa.kids-first.io/releases/'
+        else:
+            author_link = 'https://kf-ui-release-coordinator.kids-first.io/releases/'
+        author_link += ev['release']
         
     if ev['task_service'] is not None:
         author += f" :factory: {ev['task_service']}"
         
     if ev['task'] is not None:
         author += f" :hammer_and_wrench: {ev['task']}"
+    
 
     # Ignore all task and task service events that are not errors
     if ev['event_type'] != 'error' and ev['task'] is not None and ev['task_service'] is not None:
@@ -56,6 +65,8 @@ def handler(event, context):
     
     if author != '':
         attachment["author_name"] = author
+    if author_link != '':
+        attachment['author_link'] = author_link
         
     attachments.append(
         attachment
