@@ -7,14 +7,16 @@ from botocore.vendored import requests
 
 
 def handler(event, context):
-    """
+    '''
     Send a release event to slack
-    """
+    '''
     if 'Records' not in event or  len(event['Records']) < 1:
         return
 
     if 'Sns' not in event['Records'][0]:
         return
+
+    coord_url = os.environ.get('COORDINATOR_URL', '')
 
     ev = json.loads(event['Records'][0]['Sns']['Message'])
     color = {
@@ -29,30 +31,24 @@ def handler(event, context):
         'icon_emoji': ':calendar:'
     }
     emoji = {
-        'info': ":small_blue_diamond:",
-        'error': ":bangbang:",
-        'warning': ":warning:"
+        'info': ':small_blue_diamond:',
+        'error': ':bangbang:',
+        'warning': ':warning:'
     }
     emoji = emoji_from_message(ev['message'])
     emoji = emoji[ev['event_type']] if emoji is None else emoji
     message = f"{emoji} {ev['message']}"
     
     attachment = {
-        "fallback": ev['message'],
-        "color": color[ev['event_type']],
-        "text": message
+        'fallback': ev['message'],
+        'color': color[ev['event_type']],
+        'text': message
     }
     
     author = ''
-    author_link = ''
+    author_link = coord_url+'/releases/'
     if ev['release'] is not None:
         author += f":pushpin: {ev['release']}"
-        if '-dev' in context.function_name:
-            author_link = 'https://kf-ui-release-coordinator-dev.kids-first.io/releases/'
-        elif '-qa' in context.function_name:
-            author_link = 'https://kf-ui-release-coordinator-qa.kids-first.io/releases/'
-        else:
-            author_link = 'https://kf-ui-release-coordinator.kids-first.io/releases/'
         author_link += ev['release']
         
     if ev['task_service'] is not None:
@@ -67,13 +63,25 @@ def handler(event, context):
         return
     
     if author != '':
-        attachment["author_name"] = author
+        attachment['author_name'] = author
     if author_link != '':
         attachment['author_link'] = author_link
         
     attachments.append(
         attachment
     )
+
+    if 'running to staged' in ev['message']:
+        button = {
+            'fallback': f'Release must be reviewed before it may be published: {author_link}',
+            'text': f'Release must be reviewed before it may be published',
+            'actions': [{
+              'type': 'button',
+              'text': 'Review the Release',
+              'url': author_link
+            }]
+        }
+        attachments.append(button)
     
     slack_msg['attachments'] = attachments
 
